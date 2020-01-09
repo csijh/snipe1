@@ -2,6 +2,7 @@
 #include "lines.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <assert.h>
 
@@ -63,7 +64,7 @@ void insertLines(lines *ls, int at, int n, char const s[n]) {
 void deleteLines(lines *ls, int at, int n, char const s[n]) {
     ls->max = ls->max - n;
     moveGap(ls, at);
-    while (ls->lo > 0 && ls->a[ls->hi - 1] > at - n) {
+    while (ls->lo > 0 && ls->a[ls->lo - 1] > at - n) {
         ls->lo--;
     }
 }
@@ -73,14 +74,18 @@ int countLines(lines *ls) {
 }
 
 int startLine(lines *ls, int row) {
-    assert(0 <= row && row < countLines(ls));
+    int n = countLines(ls);
+    if (n == 0) return 0;
+    if (row < 0) row = 0; else if (row >= n) row = n - 1;
     if (row == 0) return 0;
     else if (row <= ls->lo) return ls->a[row - 1];
     else return ls->max - ls->a[row + (ls->hi - ls->lo) - 1];
 }
 
 int endLine(lines *ls, int row) {
-    assert(0 <= row && row < countLines(ls));
+    int n = countLines(ls);
+    if (n == 0) return 0;
+    if (row < 0) row = 0; else if (row >= n) row = n - 1;
     if (row < ls->lo) return ls->a[row];
     else return ls->max - ls->a[row + (ls->hi - ls->lo)];
 }
@@ -91,7 +96,7 @@ int lengthLine(lines *ls, int row) {
 
 // Find the row number for a position by binary search.
 int findRow(lines *ls, int at) {
-    assert(0 <= at && at <= ls->max);
+    if (at < 0) at = 0; else if (at > ls->max) at = ls->max;
     int start = 0, end = countLines(ls);
     while (end > start) {
         int mid = start + (end - start) / 2;
@@ -104,25 +109,27 @@ int findRow(lines *ls, int at) {
 
 #ifdef linesTest
 
-int main() {
-    setbuf(stdout, NULL);
-    lines *ls = newLines();
-    assert(countLines(ls) == 0);
-    assert(findRow(ls, 0) == 0);
+// Check the lines structure against an array of positions.
+static bool check(lines *ls, int n, int a[n]) {
+    if (countLines(ls) != n) return false;
+    for (int i=0; i<n; i++) {
+        if (endLine(ls, i) != a[i]) return false;
+    }
+    return true;
+}
+
+// Test insertions
+static void testInsert(lines *ls) {
     insertLines(ls, 0, 3, "ab\n");
-    assert(countLines(ls) == 1);
-    assert(findRow(ls, 0) == 0);
-    assert(findRow(ls, 2) == 0);
-    assert(findRow(ls, 3) == 1);
+    assert(check(ls, 1, (int[]){3}));
     insertLines(ls, 3, 4, "cde\n");
-    assert(countLines(ls) == 2);
-    assert(findRow(ls, 0) == 0);
-    assert(findRow(ls, 2) == 0);
-    assert(findRow(ls, 3) == 1);
-    assert(findRow(ls, 6) == 1);
-    assert(findRow(ls, 7) == 2);
+    assert(check(ls, 2, (int[]){3, 7}));
     insertLines(ls, 7, 5, "fghi\n");
-    assert(countLines(ls) == 3);
+    assert(check(ls, 3, (int[]){3, 7, 12}));
+}
+
+// Test findRow.
+static void testFind(lines *ls) {
     assert(findRow(ls, 0) == 0);
     assert(findRow(ls, 2) == 0);
     assert(findRow(ls, 3) == 1);
@@ -130,6 +137,10 @@ int main() {
     assert(findRow(ls, 7) == 2);
     assert(findRow(ls, 11) == 2);
     assert(findRow(ls, 12) == 3);
+}
+
+// Test startLine, endLine, lengthLine.
+static void testLines(lines *ls) {
     assert(startLine(ls, 0) == 0);
     assert(endLine(ls, 0) == 3);
     assert(lengthLine(ls, 0) == 3);
@@ -139,6 +150,27 @@ int main() {
     assert(startLine(ls, 2) == 7);
     assert(endLine(ls, 2) == 12);
     assert(lengthLine(ls, 2) == 5);
+}
+
+// Test deletions
+static void testDelete(lines *ls) {
+    deleteLines(ls, 12, 5, "fghi\n");
+    assert(check(ls, 2, (int[]){3, 7}));
+    deleteLines(ls, 7, 4, "cde\n");
+    assert(check(ls, 1, (int[]){3}));
+    deleteLines(ls, 3, 3, "ab\n");
+    check(ls, 0, NULL);
+}
+
+int main() {
+    setbuf(stdout, NULL);
+    lines *ls = newLines();
+    check(ls, 0, NULL);
+    assert(findRow(ls, 0) == 0);
+    testInsert(ls);
+    testFind(ls);
+    testLines(ls);
+    testDelete(ls);
     freeLines(ls);
     printf("Lines module OK\n");
     return 0;
