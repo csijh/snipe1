@@ -1,5 +1,8 @@
 # Modules forming the editor's model in dependency order.
+history = history.c
 lines = lines.c
+cursors = cursors.c history.c
+action = action.c
 
 # Find the OS platform using the uname command (using MSYS2 on Windows)
 Linux := $(findstring Linux, $(shell uname -s))

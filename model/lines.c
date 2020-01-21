@@ -120,6 +120,7 @@ static bool check(lines *ls, int n, int a[n]) {
 
 // Test insertions
 static void testInsert(lines *ls) {
+    assert(check(ls, 0, NULL));
     insertLines(ls, 0, 3, "ab\n");
     assert(check(ls, 1, (int[]){3}));
     insertLines(ls, 3, 4, "cde\n");
@@ -165,8 +166,6 @@ static void testDelete(lines *ls) {
 int main() {
     setbuf(stdout, NULL);
     lines *ls = newLines();
-    check(ls, 0, NULL);
-    assert(findRow(ls, 0) == 0);
     testInsert(ls);
     testFind(ls);
     testLines(ls);
