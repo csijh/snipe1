@@ -1,4 +1,4 @@
-// The Snipe editor is free and open source, see licence.txt.
+// Actions. Free and open source. See LICENSE.
 #include "action.h"
 #include <stdio.h>
 #include <stdlib.h>
