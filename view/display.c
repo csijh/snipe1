@@ -1,7 +1,22 @@
+#include "event.h"
 #include <stdio.h>
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_ttf.h>
+
+event getEvent();
+
+struct display {
+    ALLEGRO_DISPLAY *window;
+    ALLEGRO_EVENT_QUEUE *queue;
+    ALLEGRO_FONT *font;
+    ALLEGRO_COLOR bg, fg;
+    ALLEGRO_TIMER* timer;
+    ALLEGRO_EVENT e;
+    int unichar, x, y;
+    bool dragging;
+};
+typedef struct display display;
 
 char *lines[] = {
 "ISC License π́  ",
@@ -41,105 +56,166 @@ void drawPage(ALLEGRO_FONT *font, ALLEGRO_COLOR bg, ALLEGRO_COLOR fg) {
 }
 
 int main(int argc, char **argv){
-    ALLEGRO_DISPLAY *display;
-    ALLEGRO_EVENT_QUEUE *queue;
-    ALLEGRO_FONT *font;
-    ALLEGRO_COLOR bg, fg;
-    ALLEGRO_TIMER* timer;
+    display *d = malloc(sizeof(display));
+    d->dragging = false;
     bool ok;
 
     ok = al_init();
     if (! ok) fail("Failed to initialize Allegro.");
+    ok = al_install_keyboard();
+    if (! ok) fail("Failed to initialize keyboard.");
+    ok = al_install_mouse();
+    if (! ok) fail("Failed to initialize mouse.");
     al_init_font_addon();
     al_init_ttf_addon();
 
     al_set_new_display_flags(ALLEGRO_WINDOWED | ALLEGRO_RESIZABLE);
-    display = al_create_display(890, 530);
-    if (display == NULL) fail("Failed to create display.");
-    queue = al_create_event_queue();
-    if (queue == NULL) fail("Failed to create queue.");
-    al_register_event_source(queue, al_get_display_event_source(display));
-    font = al_load_ttf_font("DejaVuSansMono.ttf", 18, 0);
-    if (font == NULL) fail("Failed to load 'DejaVuSansMono.ttf'.");
-    bg = al_map_rgb(0, 0x2b, 0x36);
-    fg = al_map_rgb(0x83, 0x94, 0x96);
-    ok = al_install_keyboard();
-    al_register_event_source(queue, al_get_keyboard_event_source());
-    if (! ok) fail("Failed to set up keyboard.");
-    timer = al_create_timer(5.0);
-    if (timer == NULL) fail("Failed to create timer.");
-    al_register_event_source(queue, al_get_timer_event_source(timer));
+    d->window = al_create_display(890, 530);
+    if (d->window == NULL) fail("Failed to create display.");
+    al_set_system_mouse_cursor(d->window, ALLEGRO_SYSTEM_MOUSE_CURSOR_EDIT);
+    d->queue = al_create_event_queue();
+    if (d->queue == NULL) fail("Failed to create queue.");
+    d->font = al_load_ttf_font("../fonts/DejaVuSansMono.ttf", 18, 0);
+    if (d->font == NULL) fail("Failed to load 'DejaVuSansMono.ttf'.");
+    d->bg = al_map_rgb(0, 0x2b, 0x36);
+    d->fg = al_map_rgb(0x83, 0x94, 0x96);
+    d->timer = al_create_timer(10.0);
+    if (d->timer == NULL) fail("Failed to create timer.");
+    al_register_event_source(d->queue, al_get_display_event_source(d->window));
+    al_register_event_source(d->queue, al_get_keyboard_event_source());
+    al_register_event_source(d->queue, al_get_mouse_event_source());
+    al_register_event_source(d->queue, al_get_timer_event_source(d->timer));
 
-    drawPage(font, bg, fg);
-    al_start_timer(timer);
+    drawPage(d->font, d->bg, d->fg);
+    al_start_timer(d->timer);
     ok = true;
-    ALLEGRO_EVENT e;
     while (ok) {
-        al_wait_for_event(queue, &e);
-        switch(e.type) {
-            case ALLEGRO_EVENT_DISPLAY_CLOSE: ok = false; break;
-            case ALLEGRO_EVENT_DISPLAY_SWITCH_OUT:
-                printf("blur %d\n", e.type);
-                break;
-            case ALLEGRO_EVENT_DISPLAY_SWITCH_IN:
-                printf("focus %d\n", e.type);
-                break;
-            case ALLEGRO_EVENT_KEY_DOWN:
-                printf("key down %d\n", e.type);
-                break;
-            case ALLEGRO_EVENT_KEY_UP:
-                printf("key up %d\n", e.type);
-                break;
-            case ALLEGRO_EVENT_KEY_CHAR:
-                printf("key char %d\n", e.type);
-                break;
-            case ALLEGRO_EVENT_TIMER:
-                printf("tick\n");
-                break;
-            case ALLEGRO_EVENT_DISPLAY_RESIZE:
-                al_acknowledge_resize(display);
-                drawPage(font, bg, fg);
-                break;
-            default:
-            printf("e %d\n", e.type);
+        event e = getEvent(d);
+        printf("%s", findEventName(e));
+        if (e == TEXT || e == C_TEXT) printf(" %c %d", d->unichar, d->unichar);
+        if (e == CLICK || e == DRAG || e == UNCLICK) {
+            printf(" %d %d", d->x, d->y);
         }
+        printf("\n");
+        if (e == QUIT) ok = false;
     }
-
-    al_destroy_display(display);
+    al_destroy_display(d->window);
+    al_destroy_event_queue(d->queue);
+    al_destroy_font(d->font);
+    al_destroy_timer(d->timer);
+    al_shutdown_ttf_addon();
+    al_shutdown_font_addon();
+    al_uninstall_mouse();
+    al_uninstall_keyboard();
+    al_uninstall_system();
+    free(d);
     return 0;
 }
 
-//   ALLEGRO_USTR_INFO ui;
-//   ui.mlen = 42;
-//   ALLEGRO_USTR *us = &ui;
-//   printf("%d\n", us->mlen);
+// Convert a non-text keycode into a logical event, or return -1.
+event nonText(display *d, int keycode) {
+    switch (keycode) {
+        case ALLEGRO_KEY_ESCAPE: return ESCAPE;
+        case ALLEGRO_KEY_ENTER: return ENTER;
+        case ALLEGRO_KEY_PAD_ENTER: return ENTER;
+        case ALLEGRO_KEY_TAB: return TAB;
+        case ALLEGRO_KEY_BACKSPACE: return BACKSPACE;
+        case ALLEGRO_KEY_INSERT: return INSERT;
+        case ALLEGRO_KEY_DELETE: return DELETE;
+        case ALLEGRO_KEY_LEFT: return LEFT;
+        case ALLEGRO_KEY_RIGHT: return RIGHT;
+        case ALLEGRO_KEY_UP: return UP;
+        case ALLEGRO_KEY_DOWN: return DOWN;
+        case ALLEGRO_KEY_PGUP: return PAGE_UP;
+        case ALLEGRO_KEY_PGDN: return PAGE_DOWN;
+        case ALLEGRO_KEY_HOME: return HOME;
+        case ALLEGRO_KEY_END: return END;
+        case ALLEGRO_KEY_F1: return F1;
+        case ALLEGRO_KEY_F2: return F2;
+        case ALLEGRO_KEY_F3: return F3;
+        case ALLEGRO_KEY_F4: return F4;
+        case ALLEGRO_KEY_F5: return F5;
+        case ALLEGRO_KEY_F6: return F6;
+        case ALLEGRO_KEY_F7: return F7;
+        case ALLEGRO_KEY_F8: return F8;
+        case ALLEGRO_KEY_F9: return F9;
+        case ALLEGRO_KEY_F10: return F10;
+        case ALLEGRO_KEY_F11: return F11;
+        case ALLEGRO_KEY_F12: return F12;
+        default: return -1;
+    }
+}
+
+// Get an event, converting physical events into logical events. Some physical
+// events are handled internally and are not reported. CHAR events are used for
+// text (so shift is interpreted according to keyboard layout and Unicode input
+// is supported) and not for controls (because some platforms don't generate
+// CHAR events for controls).
+event getEvent(display *d) {
+    int key, mods;
+    bool shift, ctrl, cmd;
+    ALLEGRO_KEYBOARD_STATE keys;
+    while (true) {
+        al_wait_for_event(d->queue, &d->e);
+        switch(d->e.type) {
+            case ALLEGRO_EVENT_DISPLAY_CLOSE: return QUIT;
+            case ALLEGRO_EVENT_DISPLAY_SWITCH_OUT: return BLUR;
+            case ALLEGRO_EVENT_DISPLAY_SWITCH_IN: return FOCUS;
+            case ALLEGRO_EVENT_DISPLAY_RESIZE:
+                al_acknowledge_resize(d->window);
+                drawPage(d->font, d->bg, d->fg);
+                return RESIZE;
+            case ALLEGRO_EVENT_KEY_DOWN:
+                key = d->e.keyboard.keycode;
+                al_get_keyboard_state(&keys);
+                shift =
+                    al_key_down(&keys, ALLEGRO_KEY_LSHIFT) ||
+                    al_key_down(&keys, ALLEGRO_KEY_RSHIFT);
+                ctrl =
+                    al_key_down(&keys, ALLEGRO_KEY_LCTRL) ||
+                    al_key_down(&keys, ALLEGRO_KEY_RCTRL);
+                cmd = al_key_down(&keys, ALLEGRO_KEY_COMMAND);
+                event e = nonText(d, key);
+                if (e < 0) break;
+                if (shift && (ctrl|cmd)) e = SC_ + e;
+                else if (shift) e = S_ + e;
+                else if (ctrl|cmd) e = C_ + e;
+                return e;
+            case ALLEGRO_EVENT_KEY_UP:
+                break;
+            case ALLEGRO_EVENT_KEY_CHAR:
+                d->unichar = d->e.keyboard.unichar;
+                if (d->unichar < ' ' || d->unichar == 127) break;
+                mods = d->e.keyboard.modifiers;
+                ctrl = (mods & ALLEGRO_KEYMOD_CTRL) != 0;
+                cmd = (mods & ALLEGRO_KEYMOD_COMMAND) != 0;
+                if (ctrl | cmd) return C_TEXT;
+                else return TEXT;
+            case ALLEGRO_EVENT_MOUSE_AXES:
+                if (! d->dragging) break;
+                d->x = d->e.mouse.x;
+                d->y = d->e.mouse.y;
+                return DRAG;
+            case ALLEGRO_EVENT_MOUSE_BUTTON_DOWN:
+                d->dragging = true;
+                return CLICK;
+            case ALLEGRO_EVENT_MOUSE_BUTTON_UP:
+                d->dragging = false;
+                return UNCLICK;
+            case ALLEGRO_EVENT_TIMER:
+                printf("tick\n");
+                break;
+            default:
+                break;
+        }
+    }
+}
+
 /*
 case ALLEGRO_EVENT_MOUSE_ENTER_DISPLAY:
     printf("enter\n");
     break;
 case ALLEGRO_EVENT_MOUSE_LEAVE_DISPLAY:
     printf("leave\n");
-    break;
-case ALLEGRO_EVENT_DISPLAY_EXPOSE:
-case ALLEGRO_EVENT_DISPLAY_LOST:
-    printf("lost %d\n", e.type);
-    break;
-case ALLEGRO_EVENT_DISPLAY_FOUND:
-    printf("found %d\n", e.type);
-    break;
-case ALLEGRO_EVENT_DISPLAY_ORIENTATION:
-    printf("or %d\n", e.type);
-    break;
-case ALLEGRO_EVENT_DISPLAY_HALT_DRAWING:
-    printf("hlt %d\n", e.type);
-    break;
-case ALLEGRO_EVENT_DISPLAY_RESUME_DRAWING:
-    printf("res %d\n", e.type);
-    break;
-case ALLEGRO_EVENT_DISPLAY_CONNECTED:
-    printf("con %d\n", e.type);
-    break;
-case ALLEGRO_EVENT_DISPLAY_DISCONNECTED:
-    printf("disc %d\n", e.type);
     break;
 */
