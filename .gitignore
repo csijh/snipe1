@@ -4,3 +4,5 @@
 *.exe
 .DS_Store
 snipe
+unicode/unigen
+unicode/unicode
