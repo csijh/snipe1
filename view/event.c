@@ -40,10 +40,17 @@ static char *eventNames[] = {
     [S_DRAG]="S_DRAG", [C_DRAG]="C_DRAG", [SC_DRAG]="SC_DRAG",
     [UNCLICK]="UNCLICK", [S_UNCLICK]="S_UNCLICK", [C_UNCLICK]="C_UNCLICK",
     [SC_UNCLICK]="SC_UNCLICK", [SCROLL]="SCROLL", [S_SCROLL]="S_SCROLL",
-    [C_SCROLL]="C_SCROLL", [SC_SCROLL]="SC_SCROLL", [TEXT]="TEXT",
-    [C_TEXT]="C_TEXT", [PASTE]="PASTE", [RESIZE]="RESIZE", [FOCUS]="FOCUS",
-    [BLUR]="BLUR", [FRAME]="FRAME", [LOAD]="LOAD", [BLINK]="BLINK",
-    [SAVE]="SAVE", [QUIT]="QUIT", [IGNORE]="IGNORE"
+    [C_SCROLL]="C_SCROLL", [SC_SCROLL]="SC_SCROLL", [TEXT]="TEXT", [C_A]="C_A",
+    [C_B]="C_B", [C_C]="C_C", [C_D]="C_D", [C_E]="C_E", [C_F]="C_F",
+    [C_G]="C_G", [C_H]="C_H", [C_I]="C_I", [C_J]="C_J", [C_K]="C_K",
+    [C_L]="C_L", [C_M]="C_M", [C_N]="C_N", [C_O]="C_O", [C_P]="C_P",
+    [C_Q]="C_Q", [C_R]="C_R", [C_S]="C_S", [C_T]="C_T", [C_U]="C_U",
+    [C_V]="C_V", [C_W]="C_W", [C_X]="C_X", [C_Y]="C_Y", [C_Z]="C_Z",
+    [C_0]="C_0", [C_1]="C_1", [C_2]="C_2", [C_3]="C_3", [C_4]="C_4",
+    [C_5]="C_5", [C_6]="C_6", [C_7]="C_7", [C_8]="C_8", [C_9]="C_9",
+    [C_PLUS]="C_PLUS", [C_MINUS]="C_MINUS", [PASTE]="PASTE", [RESIZE]="RESIZE",
+    [FOCUS]="FOCUS", [BLUR]="BLUR", [FRAME]="FRAME", [LOAD]="LOAD",
+    [BLINK]="BLINK", [SAVE]="SAVE", [QUIT]="QUIT", [IGNORE]="IGNORE"
 };
 static int COUNT = sizeof(eventNames) / sizeof(char *);
 

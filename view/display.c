@@ -92,7 +92,7 @@ int main(int argc, char **argv){
     while (ok) {
         event e = getEvent(d);
         printf("%s", findEventName(e));
-        if (e == TEXT || e == C_TEXT) printf(" %c %d", d->unichar, d->unichar);
+        if (e == TEXT) printf(" %c %d", d->unichar, d->unichar);
         if (e == CLICK || e == DRAG || e == UNCLICK) {
             printf(" %d %d", d->x, d->y);
         }
@@ -113,7 +113,7 @@ int main(int argc, char **argv){
 }
 
 // Convert a non-text keycode into a logical event, or return -1.
-event nonText(display *d, int keycode) {
+event nonText(int keycode) {
     switch (keycode) {
         case ALLEGRO_KEY_ESCAPE: return ESCAPE;
         case ALLEGRO_KEY_ENTER: return ENTER;
@@ -142,6 +142,52 @@ event nonText(display *d, int keycode) {
         case ALLEGRO_KEY_F10: return F10;
         case ALLEGRO_KEY_F11: return F11;
         case ALLEGRO_KEY_F12: return F12;
+        default: return -1;
+    }
+}
+
+// Convert control plus a text keycode into a logical event, or return -1. No
+// keyboard layout info is available, so '+' is assumed to be on the '=' key.
+event controlText(int keycode) {
+    switch (keycode) {
+        case ALLEGRO_KEY_A: return C_A;
+        case ALLEGRO_KEY_B: return C_B;
+        case ALLEGRO_KEY_C: return C_C;
+        case ALLEGRO_KEY_D: return C_D;
+        case ALLEGRO_KEY_E: return C_E;
+        case ALLEGRO_KEY_F: return C_F;
+        case ALLEGRO_KEY_G: return C_G;
+        case ALLEGRO_KEY_H: return C_H;
+        case ALLEGRO_KEY_I: return C_I;
+        case ALLEGRO_KEY_J: return C_J;
+        case ALLEGRO_KEY_K: return C_K;
+        case ALLEGRO_KEY_L: return C_L;
+        case ALLEGRO_KEY_M: return C_M;
+        case ALLEGRO_KEY_N: return C_N;
+        case ALLEGRO_KEY_O: return C_O;
+        case ALLEGRO_KEY_P: return C_P;
+        case ALLEGRO_KEY_Q: return C_Q;
+        case ALLEGRO_KEY_R: return C_R;
+        case ALLEGRO_KEY_S: return C_S;
+        case ALLEGRO_KEY_T: return C_T;
+        case ALLEGRO_KEY_U: return C_U;
+        case ALLEGRO_KEY_V: return C_V;
+        case ALLEGRO_KEY_W: return C_W;
+        case ALLEGRO_KEY_X: return C_X;
+        case ALLEGRO_KEY_Y: return C_Y;
+        case ALLEGRO_KEY_Z: return C_Z;
+        case ALLEGRO_KEY_0: case ALLEGRO_KEY_PAD_0: return C_0;
+        case ALLEGRO_KEY_1: case ALLEGRO_KEY_PAD_1: return C_1;
+        case ALLEGRO_KEY_2: case ALLEGRO_KEY_PAD_2: return C_2;
+        case ALLEGRO_KEY_3: case ALLEGRO_KEY_PAD_3: return C_3;
+        case ALLEGRO_KEY_4: case ALLEGRO_KEY_PAD_4: return C_4;
+        case ALLEGRO_KEY_5: case ALLEGRO_KEY_PAD_5: return C_5;
+        case ALLEGRO_KEY_6: case ALLEGRO_KEY_PAD_6: return C_6;
+        case ALLEGRO_KEY_7: case ALLEGRO_KEY_PAD_7: return C_7;
+        case ALLEGRO_KEY_8: case ALLEGRO_KEY_PAD_8: return C_8;
+        case ALLEGRO_KEY_9: case ALLEGRO_KEY_PAD_9: return C_9;
+        case ALLEGRO_KEY_EQUALS: case ALLEGRO_KEY_PAD_PLUS: return C_PLUS;
+        case ALLEGRO_KEY_MINUS: case ALLEGRO_KEY_PAD_MINUS: return C_MINUS;
         default: return -1;
     }
 }
@@ -175,7 +221,11 @@ event getEvent(display *d) {
                     al_key_down(&keys, ALLEGRO_KEY_LCTRL) ||
                     al_key_down(&keys, ALLEGRO_KEY_RCTRL);
                 cmd = al_key_down(&keys, ALLEGRO_KEY_COMMAND);
-                event e = nonText(d, key);
+                event e = nonText(key);
+                if (e < 0 && (ctrl|cmd)) {
+                    e = controlText(key);
+                    if (e >= 0) return e;
+                }
                 if (e < 0) break;
                 if (shift && (ctrl|cmd)) e = SC_ + e;
                 else if (shift) e = S_ + e;
@@ -189,8 +239,8 @@ event getEvent(display *d) {
                 mods = d->e.keyboard.modifiers;
                 ctrl = (mods & ALLEGRO_KEYMOD_CTRL) != 0;
                 cmd = (mods & ALLEGRO_KEYMOD_COMMAND) != 0;
-                if (ctrl | cmd) return C_TEXT;
-                else return TEXT;
+                if (ctrl | cmd) break;
+                return TEXT;
             case ALLEGRO_EVENT_MOUSE_AXES:
                 if (! d->dragging) break;
                 d->x = d->e.mouse.x;
