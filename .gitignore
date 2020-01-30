@@ -2,6 +2,7 @@
 *.a
 *.dll
 *.exe
+*.dSYM
 .DS_Store
 snipe
 unicode/unigen
